@@ -26,7 +26,7 @@ export class RoomManager {
       roomId,
     });
     user2?.socket.emit('new-room', {
-      type: 'send-connection-req',
+      type: 'wait-for-connection-req',
       roomId,
     });
   }
