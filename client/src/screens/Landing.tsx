@@ -1,11 +1,20 @@
-import React from 'react'
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const Landing = () => {
+  const [name, setName] = useState<string>();
+
+  const handleRoomTransfer = () => {
+    <Link to={`/room?name={name}`} />;
+  };
+
   return (
     <div>
-      Landing
-    </div>
-  )
-}
+      <input type='text' onChange={(e) => e.target.value} />
 
-export default Landing
+      <button onClick={handleRoomTransfer}>JOIN</button>
+    </div>
+  );
+};
+
+export default Landing;
