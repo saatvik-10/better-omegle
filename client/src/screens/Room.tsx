@@ -22,13 +22,13 @@ const Room = () => {
     });
 
     socketInstance.on('new-room', ({ roomId }: { roomId: string }) => {
-      toast('Create new room please');
+      toast('You have entered a new room');
       setLobby(false);
       socketInstance.emit('offer', { sdp: '', roomId });
     });
 
     socketInstance.on('offer', ({ roomId }: { roomId: string }) => {
-      toast('Got offer; sending answer placeholder');
+      toast('Got offer');
       setLobby(false);
       socketInstance.emit('answer', { sdp: '', roomId });
     });
