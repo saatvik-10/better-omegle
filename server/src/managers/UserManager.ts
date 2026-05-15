@@ -19,15 +19,22 @@ export class UserManager {
   }
 
   async addUser(name: string, socket: Socket) {
+    this.initHandler(socket);
+
+    const existingUser = this.users.find((u) => u.socket.id === socket.id);
+    if (existingUser) {
+      existingUser.name = name;
+      return;
+    }
+
     this.users.push({
       name,
       socket,
     });
 
-    await client.lPush('queue', socket.id);
+    await client.rPush('queue', socket.id);
     // this.queue.push(socket.id);
     await this.clearQueue();
-    await this.initHandler(socket);
   }
 
   async removeUser(socketId: string) {
@@ -42,15 +49,20 @@ export class UserManager {
     const user1Id = await client.lPop('queue');
     const user2Id = await client.lPop('queue');
 
+    if (!user1Id || !user2Id) return;
+
     const user1 = this.users.find((u) => u.socket.id === user1Id);
     const user2 = this.users.find((u) => u.socket.id === user2Id);
 
     if (user1 && user2) {
-      const room = this.roomManager.createRoom(user1, user2);
+      this.roomManager.createRoom(user1, user2);
     }
   }
 
   initHandler(socket: Socket) {
+    if (socket.data.userManagerHandlersInitialized === true) return;
+    socket.data.userManagerHandlersInitialized = true;
+
     socket.on('offer', ({ roomId, sdp }: { roomId: string; sdp: string }) => {
       this.roomManager.onConnReqOffer(roomId, sdp);
     });
