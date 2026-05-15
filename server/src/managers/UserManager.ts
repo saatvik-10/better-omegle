@@ -33,6 +33,7 @@ export class UserManager {
     });
 
     await client.rPush('queue', socket.id);
+    socket.send('lobby');
     // this.queue.push(socket.id);
     await this.clearQueue();
   }
