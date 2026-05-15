@@ -10,6 +10,7 @@ const Room = () => {
   const name = searchParams.get('name');
 
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [lobby, setLobby] = useState<boolean>(false);
 
   useEffect(() => {
     if (!name) return;
@@ -20,13 +21,25 @@ const Room = () => {
       socketInstance.emit('join', { name });
     });
 
+    socketInstance.on('new-room', ({ roomId }: { roomId: string }) => {
+      toast('Create new room please');
+      setLobby(false);
+      socketInstance.emit('offer', { sdp: '', roomId });
+    });
+
     socketInstance.on('offer', ({ roomId }: { roomId: string }) => {
       toast('Got offer; sending answer placeholder');
+      setLobby(false);
       socketInstance.emit('answer', { sdp: '', roomId });
     });
 
     socketInstance.on('answer', () => {
       toast.success('Answer received');
+      setLobby(false);
+    });
+
+    socketInstance.on('lobby', () => {
+      setLobby(true);
     });
 
     setSocket(socketInstance);
@@ -37,7 +50,11 @@ const Room = () => {
     };
   }, [name]);
 
-  return <div>Hello {name}</div>;
+  return (
+    <div>
+      {lobby ? 'Waiting to connect you with someone' : `Hello ${name ?? ''}`}
+    </div>
+  );
 };
 
 export default Room;
