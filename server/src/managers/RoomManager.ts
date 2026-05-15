@@ -36,6 +36,7 @@ export class RoomManager {
 
     user2?.socket.emit('offer', {
       sdp,
+      roomId
     });
   }
 
@@ -44,6 +45,7 @@ export class RoomManager {
 
     user1?.socket.emit('answer', {
       sdp,
+      roomId
     });
   }
 
