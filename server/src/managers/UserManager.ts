@@ -33,7 +33,11 @@ export class UserManager {
     });
 
     await client.rPush('queue', socket.id);
-    socket.send('lobby');
+    const queueLength = await client.lLen('queue');
+    if (queueLength < 2) {
+      socket.emit('lobby');
+      return;
+    }
     // this.queue.push(socket.id);
     await this.clearQueue();
   }
