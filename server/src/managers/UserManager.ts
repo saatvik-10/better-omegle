@@ -1,0 +1,62 @@
+import type { Socket } from 'socket.io';
+import client from '../config/redis';
+import type { RoomManager } from './RoomManager';
+
+export interface User {
+  name: string;
+  socket: Socket;
+}
+
+export class UserManager {
+  private users: User[];
+  //   private queue: string[];
+  private roomManager: RoomManager;
+
+  constructor(roomManager: RoomManager) {
+    this.users = [];
+    this.roomManager = roomManager;
+    // this.queue = [];
+  }
+
+  async addUser(name: string, socket: Socket) {
+    this.users.push({
+      name,
+      socket,
+    });
+
+    await client.lPush('queue', socket.id);
+    // this.queue.push(socket.id);
+    await this.clearQueue();
+    await this.initHandler(socket);
+  }
+
+  async removeUser(socketId: string) {
+    this.users = this.users.filter((u) => u.socket.id !== socketId);
+    await client.lRem('queue', 0, socketId);
+  }
+
+  async clearQueue() {
+    const queueLength = await client.lLen('queue');
+    if (queueLength < 2) return;
+
+    const user1Id = await client.lPop('queue');
+    const user2Id = await client.lPop('queue');
+
+    const user1 = this.users.find((u) => u.socket.id === user1Id);
+    const user2 = this.users.find((u) => u.socket.id === user2Id);
+
+    if (user1 && user2) {
+      const room = this.roomManager.createRoom(user1, user2);
+    }
+  }
+
+  initHandler(socket: Socket) {
+    socket.on('offer', ({ roomId, sdp }: { roomId: string; sdp: string }) => {
+      this.roomManager.onConnReqOffer(roomId, sdp);
+    });
+
+    socket.on('answer', ({ roomId, sdp }: { roomId: string; sdp: string }) => {
+      this.roomManager.onConnReqAns(roomId, sdp);
+    });
+  }
+}
