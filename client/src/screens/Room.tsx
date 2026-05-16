@@ -12,6 +12,17 @@ const Room = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [lobby, setLobby] = useState<boolean>(false);
 
+  const [sendingPc, setSendingPc] = useState<null | RTCPeerConnection>(null);
+  const [receivingPc, setReceivingPc] = useState<null | RTCPeerConnection>(
+    null,
+  );
+  const [remoteVideoTrack, setRemoteVideoTrack] =
+    useState<MediaStreamTrack | null>(null);
+  const [localVideoTracck, setlocalVideoTracck] = useState<MediaStreamTrack>();
+  const [remoteAudioTrack, setRemoteAudioTrack] =
+    useState<MediaStreamTrack | null>(null);
+  const [localAudioTrack, setLocalAudioTrack] = useState<MediaStreamTrack>();
+
   useEffect(() => {
     if (!name) return;
 
@@ -21,21 +32,62 @@ const Room = () => {
       socketInstance.emit('join', { name });
     });
 
-    socketInstance.on('new-room', ({ roomId }: { roomId: string }) => {
+    socketInstance.on('new-room', async ({ roomId }: { roomId: string }) => {
       toast('You have entered a new room');
       setLobby(false);
-      socketInstance.emit('offer', { sdp: '', roomId });
+
+      const pc = new RTCPeerConnection();
+      setSendingPc(pc);
+
+      const sdp = await pc.createOffer();
+
+      socketInstance.emit('offer', { sdp, roomId });
     });
 
-    socketInstance.on('offer', ({ roomId }: { roomId: string }) => {
-      toast('Got offer');
-      setLobby(false);
-      socketInstance.emit('answer', { sdp: '', roomId });
-    });
+    socketInstance.on(
+      'offer',
+      async ({
+        roomId,
+        offer: offerSdp,
+      }: {
+        roomId: string;
+        offer: string;
+      }) => {
+        toast('Got offer');
+        setLobby(false);
 
-    socketInstance.on('answer', () => {
+        const pc = new RTCPeerConnection();
+        pc.setRemoteDescription({
+          sdp: offerSdp,
+          type: 'offer',
+        });
+
+        const sdp = await pc.createAnswer();
+        setReceivingPc(pc);
+
+        pc.ontrack = ({ track, type }) => {
+          if (type == 'audio') {
+            setRemoteAudioTrack(track);
+          } else {
+            setRemoteVideoTrack(track);
+          }
+        };
+
+        socketInstance.emit('answer', { sdp, roomId });
+      },
+    );
+
+    socketInstance.on('answer', ({ sdp }: { sdp: string }) => {
       toast.success('Answer received');
       setLobby(false);
+
+      setSendingPc((pc) => {
+        pc?.setRemoteDescription({
+          type: 'answer',
+          sdp,
+        });
+        return pc;
+      });
     });
 
     socketInstance.on('lobby', () => {
@@ -52,7 +104,15 @@ const Room = () => {
 
   return (
     <div>
-      {lobby ? 'Waiting to connect you with someone' : `Hello ${name ?? ''}`}
+      {lobby ? (
+        'Waiting to connect you with someone'
+      ) : (
+        <>
+          `Wassuppp ${name ?? ''}`
+          <video width={400} height={400} src=''></video>
+          <video width={400} height={400} src=''></video>
+        </>
+      )}
     </div>
   );
 };
