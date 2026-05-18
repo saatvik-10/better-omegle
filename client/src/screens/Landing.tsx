@@ -16,8 +16,10 @@ const Landing = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleRoomTransfer = () => {
-    if (!name.trim()) return;
-    navigate(`/room?name=${encodeURIComponent(name.trim())}`);
+    // if (!name.trim()) return;
+    // navigate(`/room?name=${encodeURIComponent(name.trim())}`);
+
+    setJoined(true);
   };
 
   const getStream = async () => {
@@ -28,12 +30,13 @@ const Landing = () => {
     const videoTrack = stream.getVideoTracks()[0];
     const audioTrack = stream.getAudioTracks()[0];
 
-    setlocalVideoTrack(audioTrack);
-    setLocalAudioTrack(videoTrack);
+    setlocalVideoTrack(videoTrack);
+    setLocalAudioTrack(audioTrack);
 
     if (!videoRef.current) return;
 
     videoRef.current.srcObject = new MediaStream([videoTrack]);
+    videoRef.current.play();
   };
 
   useEffect(() => {
@@ -45,7 +48,13 @@ const Landing = () => {
     <div>
       {!joined ? (
         <>
-          <video autoPlay ref={videoRef} className='rotate-x-180 rotate-180' />
+          <video
+            autoPlay
+            muted
+            playsInline
+            ref={videoRef}
+            className='rotate-y-180'
+          />
 
           <input
             type='text'
