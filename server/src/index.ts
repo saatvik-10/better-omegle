@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { Server, Socket } from 'socket.io';
 import { RoomManager } from './managers/RoomManager';
 import { UserManager } from './managers/UserManager';
+import type { JoinPayload } from '../../shared/socketPayloads';
 import { connectRedis, registerRedisShutdown } from './config/redis';
 
 const app = express();
@@ -31,7 +32,7 @@ app.get('/', (req, res) => {
 io.on('connection', (socket: Socket) => {
   console.log('a user connected');
 
-  socket.on('join', async ({ name }: { name: string }) => {
+  socket.on('join', async ({ name }: JoinPayload) => {
     await userManager.addUser(name, socket);
   });
 

@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io';
 import client from '../config/redis';
 import type { RoomManager } from './RoomManager';
+import type { AnswerPayload, OfferPayload } from '../../../shared/socketPayloads';
 
 export interface User {
   name: string;
@@ -68,11 +69,11 @@ export class UserManager {
     if (socket.data.userManagerHandlersInitialized === true) return;
     socket.data.userManagerHandlersInitialized = true;
 
-    socket.on('offer', ({ roomId, sdp }: { roomId: string; sdp: string }) => {
+    socket.on('offer', ({ roomId, sdp }: OfferPayload) => {
       this.roomManager.onConnReqOffer(roomId, sdp);
     });
 
-    socket.on('answer', ({ roomId, sdp }: { roomId: string; sdp: string }) => {
+    socket.on('answer', ({ roomId, sdp }: AnswerPayload) => {
       this.roomManager.onConnReqAns(roomId, sdp);
     });
   }
