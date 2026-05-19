@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import Room from './Room';
 
 const Landing = () => {
   const [name, setName] = useState<string>('');
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const [joined, setJoined] = useState<boolean>(false);
 
