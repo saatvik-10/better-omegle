@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { io, type Socket } from 'socket.io-client';
+import type {
+  AnswerPayload,
+  NewRoomPayload,
+  OfferPayload,
+} from '../../../shared/socketPayloads';
 
 const Room = ({
   name,
@@ -39,7 +44,7 @@ const Room = ({
       socketInstance.emit('join', { name });
     });
 
-    socketInstance.on('new-room', async ({ roomId }: { roomId: string }) => {
+    socketInstance.on('new-room', async ({ roomId }: NewRoomPayload) => {
       toast('You have entered a new room');
       setLobby(false);
 
@@ -49,31 +54,36 @@ const Room = ({
       pc.addTrack(localAudioTrack!);
       pc.addTrack(localVideoTrack!);
 
-      pc.onicecandidate = async () => {
-        const sdp = await pc.createOffer();
-        socketInstance.emit('offer', { sdp, roomId });
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      socketInstance.emit('offer', { sdp: offer.sdp, roomId });
+
+      pc.onicecandidate = (event) => {
+        if (!event.candidate) return;
+        
+        socketInstance.emit('ice-candidate', {
+          candidate: event.candidate,
+          roomId,
+        });
       };
     });
 
     socketInstance.on(
       'offer',
-      async ({
-        roomId,
-        offer: offerSdp,
-      }: {
-        roomId: string;
-        offer: string;
-      }) => {
+      async ({ roomId, sdp: offerSdp }: OfferPayload) => {
         toast('Got offer');
         setLobby(false);
 
         const pc = new RTCPeerConnection();
+
         pc.setRemoteDescription({
           sdp: offerSdp,
           type: 'offer',
         });
 
-        const sdp = await pc.createAnswer();
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
         const stream = new MediaStream();
 
@@ -92,11 +102,12 @@ const Room = ({
           }
         };
 
-        socketInstance.emit('answer', { sdp, roomId });
+        if (!answer.sdp) return;
+        socketInstance.emit('answer', { sdp: answer.sdp, roomId });
       },
     );
 
-    socketInstance.on('answer', ({ sdp }: { sdp: string }) => {
+    socketInstance.on('answer', ({ sdp }: AnswerPayload) => {
       toast.success('Answer received');
       setLobby(false);
 
