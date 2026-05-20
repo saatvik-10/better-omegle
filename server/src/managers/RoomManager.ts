@@ -1,5 +1,10 @@
 import crypto from 'crypto';
 import type { User } from './UserManager';
+import type {
+  OfferPayload,
+  AnswerPayload,
+  IceCandidatePayload,
+} from '../../../shared/socketPayloads';
 
 interface Room {
   user1: User;
@@ -31,22 +36,48 @@ export class RoomManager {
     });
   }
 
-  onConnReqOffer(roomId: string, sdp: string) {
-    const user2 = this.rooms.get(roomId)?.user2;
+  onConnReqOffer({ roomId, sdp, senderSocketId }: OfferPayload) {
+    const room = this.rooms.get(roomId);
 
-    user2?.socket.emit('offer', {
+    if (!room) return;
+
+    const receivingUser =
+      room.user1.socket.id === senderSocketId ? room.user2 : room.user1;
+
+    receivingUser?.socket.emit('offer', {
       sdp,
-      roomId
+      roomId,
     });
   }
 
-  onConnReqAns(roomId: string, sdp: string) {
-    const user1 = this.rooms.get(roomId)?.user1;
+  onConnReqAns({ roomId, sdp, senderSocketId }: AnswerPayload) {
+    const room = this.rooms.get(roomId);
 
-    user1?.socket.emit('answer', {
+    if (!room) return;
+
+    const receivingUser =
+      room.user1.socket.id === senderSocketId ? room.user2 : room.user1;
+
+    receivingUser?.socket.emit('answer', {
       sdp,
-      roomId
+      roomId,
     });
+  }
+
+  onIceCandidate({
+    roomId,
+    senderSocketId,
+    candidate,
+    type,
+  }: IceCandidatePayload) {
+    const room = this.rooms.get(roomId);
+
+    if (!room) return;
+
+    const receivingUser =
+      room.user1.socket.id === senderSocketId ? room.user2 : room.user1;
+
+    receivingUser.socket.emit('ice-candidate', { candidate, type });
   }
 
   generate() {

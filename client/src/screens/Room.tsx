@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { io, type Socket } from 'socket.io-client';
 import type {
   AnswerPayload,
+  IceCandidatePayload,
   NewRoomPayload,
   OfferPayload,
 } from '../../../shared/socketPayloads';
@@ -18,18 +19,15 @@ const Room = ({
 }) => {
   const URL = 'ws://localhost:8000';
 
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [_socket, setSocket] = useState<Socket | null>(null);
   const [lobby, setLobby] = useState<boolean>(false);
 
-  const [sendingPc, setSendingPc] = useState<null | RTCPeerConnection>(null);
-  const [receivingPc, setReceivingPc] = useState<null | RTCPeerConnection>(
+  const [_sendingPc, setSendingPc] = useState<null | RTCPeerConnection>(null);
+  const [_receivingPc, setReceivingPc] = useState<null | RTCPeerConnection>(
     null,
   );
-  const [remoteVideoTrack, setRemoteVideoTrack] =
-    useState<MediaStreamTrack | null>(null);
-  const [remoteAudioTrack, setRemoteAudioTrack] =
-    useState<MediaStreamTrack | null>(null);
-  const [remoteMediaStream, setRemoteMediaStream] =
+
+  const [_remoteMediaStream, setRemoteMediaStream] =
     useState<MediaStream | null>(null);
 
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -44,27 +42,51 @@ const Room = ({
       socketInstance.emit('join', { name });
     });
 
-    socketInstance.on('new-room', async ({ roomId }: NewRoomPayload) => {
+    socketInstance.on('new-room', async ({ roomId, type }: NewRoomPayload) => {
       toast('You have entered a new room');
       setLobby(false);
+
+      if (type !== 'send-connection-req') return;
+      if (!localAudioTrack || !localVideoTrack) return;
+      if (!socketInstance.id) return;
 
       const pc = new RTCPeerConnection();
       setSendingPc(pc);
 
-      pc.addTrack(localAudioTrack!);
-      pc.addTrack(localVideoTrack!);
+      const stream = new MediaStream();
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = stream;
+      }
+      setRemoteMediaStream(stream);
+
+      pc.ontrack = (event) => {
+        const currentStream = remoteVideoRef.current?.srcObject;
+        if (currentStream instanceof MediaStream) {
+          currentStream.addTrack(event.track);
+        }
+      };
+
+      pc.addTrack(localAudioTrack);
+      pc.addTrack(localVideoTrack);
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      socketInstance.emit('offer', { sdp: offer.sdp, roomId });
+      if (!offer.sdp) return;
+      socketInstance.emit('offer', {
+        sdp: offer.sdp,
+        roomId,
+        senderSocketId: socketInstance.id,
+      });
 
       pc.onicecandidate = (event) => {
-        if (!event.candidate) return;
-        
+        if (!event.candidate || !socketInstance.id) return;
+
         socketInstance.emit('ice-candidate', {
           candidate: event.candidate,
           roomId,
+          senderSocketId: socketInstance.id,
+          type: 'sender',
         });
       };
     });
@@ -75,9 +97,38 @@ const Room = ({
         toast('Got offer');
         setLobby(false);
 
+        if (!localAudioTrack || !localVideoTrack) return;
+
         const pc = new RTCPeerConnection();
 
-        pc.setRemoteDescription({
+        const stream = new MediaStream();
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = stream;
+        }
+        setRemoteMediaStream(stream);
+
+        pc.ontrack = (event) => {
+          const currentStream = remoteVideoRef.current?.srcObject;
+          if (currentStream instanceof MediaStream) {
+            currentStream.addTrack(event.track);
+          }
+        };
+
+        pc.onicecandidate = (event) => {
+          if (!event.candidate || !socketInstance.id) return;
+
+          socketInstance.emit('ice-candidate', {
+            candidate: event.candidate,
+            roomId,
+            senderSocketId: socketInstance.id,
+            type: 'receiver',
+          });
+        };
+
+        pc.addTrack(localAudioTrack);
+        pc.addTrack(localVideoTrack);
+
+        await pc.setRemoteDescription({
           sdp: offerSdp,
           type: 'offer',
         });
@@ -85,25 +136,14 @@ const Room = ({
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        const stream = new MediaStream();
-
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = stream;
-        }
-
-        setRemoteMediaStream(stream);
-
         setReceivingPc(pc);
 
-        pc.ontrack = (event) => {
-          const stream = remoteVideoRef.current?.srcObject;
-          if (stream instanceof MediaStream) {
-            stream.addTrack(event.track);
-          }
-        };
-
-        if (!answer.sdp) return;
-        socketInstance.emit('answer', { sdp: answer.sdp, roomId });
+        if (!answer.sdp || !socketInstance.id) return;
+        socketInstance.emit('answer', {
+          sdp: answer.sdp,
+          roomId,
+          senderSocketId: socketInstance.id,
+        });
       },
     );
 
@@ -124,6 +164,23 @@ const Room = ({
       setLobby(true);
     });
 
+    socketInstance.on(
+      'ice-candidate',
+      ({ candidate, type }: IceCandidatePayload) => {
+        if (type === 'sender') {
+          setReceivingPc((pc) => {
+            pc?.addIceCandidate(candidate);
+            return pc;
+          });
+        } else {
+          setSendingPc((pc) => {
+            pc?.addIceCandidate(candidate);
+            return pc;
+          });
+        }
+      },
+    );
+
     setSocket(socketInstance);
 
     return () => {
@@ -137,6 +194,11 @@ const Room = ({
 
     localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
     localVideoRef.current.play();
+
+    // if (!remoteVideoRef.current || !remoteVideoTrack) return;
+
+    // remoteVideoRef.current.srcObject = new MediaStream([remoteVideoTrack]);
+    // remoteVideoRef.current.play();
   }, [localVideoTrack]);
 
   return (
@@ -144,7 +206,7 @@ const Room = ({
       Wassuppp {name}
       <video
         autoPlay
-        muted
+        // muted
         playsInline
         width={400}
         height={400}
@@ -152,7 +214,15 @@ const Room = ({
         className='rotate-y-180'
       />
       {lobby ? 'Waiting to connect you with someone' : null}
-      <video autoPlay width={400} height={400} ref={remoteVideoRef} />
+      <video
+        autoPlay
+        // muted
+        playsInline
+        width={400}
+        height={400}
+        className='rotate-y-180'
+        ref={remoteVideoRef}
+      />
     </div>
   );
 };

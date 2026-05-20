@@ -14,9 +14,18 @@ export interface NewRoomPayload {
 export interface OfferPayload {
   roomId: string;
   sdp: string;
+  senderSocketId: string;
 }
 
 export interface AnswerPayload {
   roomId: string;
   sdp: string;
+  senderSocketId: string;
+}
+
+export interface IceCandidatePayload {
+  roomId: string;
+  senderSocketId: string | null;
+  candidate: any;
+  type: 'sender' | 'receiver';
 }
