@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Mic, MicOff, Radar, RefreshCcw, Signal, Sparkles } from 'lucide-react';
+import { Camera, CameraOff, Mic, MicOff, Radar, RefreshCcw, Signal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import type {
@@ -31,10 +31,15 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
   const receivingPcRef = useRef<RTCPeerConnection | null>(null);
 
   const [audioOff, setAudioOff] = useState<boolean>(false);
+  const [cameraOff, setCameraOff] = useState<boolean>(false)
 
   const handleAudio = () => {
     setAudioOff((mic) => !mic)
   };
+
+  const handleCamera = () => {
+    setCameraOff((vid) => !vid)
+  }
 
   useEffect(() => {
     if (!name) return;
@@ -189,9 +194,13 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
   useEffect(() => {
     if (!localVideoRef.current || !localVideoTrack) return;
 
-    localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
-    void localVideoRef.current.play();
-  }, [localVideoTrack]);
+    if(!cameraOff) {
+      localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
+      void localVideoRef.current.play();
+    } else {
+      localVideoRef.current = null
+    }
+  }, [localVideoTrack, cameraOff]);
 
   return (
     <main className='relative min-h-svh overflow-hidden bg-ink text-foam'>
@@ -265,12 +274,13 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
                   </p>
                 </div>
               </div>
-              <div className='mt-5 grid grid-cols-3 gap-2'>
+              <div className='mt-5 grid grid-cols-2 gap-2'>
                 <button
                   className='grid h-14 place-items-center rounded-2xl border border-white/10 bg-white/6 text-foam/72'
                   type='button'
+                  onClick={handleCamera}
                 >
-                  <Camera className='size-5' />
+                  {cameraOff ? <CameraOff className='size-5' /> : <Camera className='size-5' />}
                 </button>
                 <button
                   className='grid h-14 place-items-center rounded-2xl border border-white/10 bg-white/6 text-foam/72'
@@ -278,12 +288,6 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
                   onClick={handleAudio}
                 >
                   {audioOff ? <MicOff className='size-5' /> : <Mic className='size-5' />}
-                </button>
-                <button
-                  className='grid h-14 place-items-center rounded-2xl border border-white/10 bg-white/6 text-foam/72'
-                  type='button'
-                >
-                  <Sparkles className='size-5' />
                 </button>
               </div>
             </TextureCard>
