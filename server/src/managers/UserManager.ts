@@ -1,5 +1,5 @@
 import type { Socket } from 'socket.io';
-import client from '../config/redis';
+// import client from '../config/redis';
 import type { RoomManager } from './RoomManager';
 import type {
   AnswerPayload,
@@ -14,59 +14,53 @@ export interface User {
 
 export class UserManager {
   private users: User[];
-  //   private queue: string[];
+  private queue: string[];
   private roomManager: RoomManager;
 
   constructor(roomManager: RoomManager) {
     this.users = [];
     this.roomManager = roomManager;
-    // this.queue = [];
+    this.queue = [];
   }
 
-  async addUser(name: string, socket: Socket) {
-    this.initHandler(socket);
-
-    const existingUser = this.users.find((u) => u.socket.id === socket.id);
-    if (existingUser) {
-      existingUser.name = name;
-      return;
-    }
-
+  addUser(name: string, socket: Socket) {
     this.users.push({
       name,
       socket,
     });
 
-    await client.rPush('queue', socket.id);
-    const queueLength = await client.lLen('queue');
-    if (queueLength < 2) {
-      socket.emit('lobby');
-      return;
-    }
-    // this.queue.push(socket.id);
-    await this.clearQueue();
+    // await client.rPush('queue', socket.id);
+    this.queue.push(socket.id);
+
+    socket.emit('lobby');
+
+    this.initHandler(socket);
+    this.clearQueue();
   }
 
-  async removeUser(socketId: string) {
+  removeUser(socketId: string) {
     this.users = this.users.filter((u) => u.socket.id !== socketId);
-    await client.lRem('queue', 0, socketId);
+    // await client.lRem('queue', 0, socketId);
+    this.queue = this.queue.filter((id) => id !== socketId);
   }
 
-  async clearQueue() {
-    const queueLength = await client.lLen('queue');
-    if (queueLength < 2) return;
+  clearQueue() {
+    if (this.queue.length < 2) return;
 
-    const user1Id = await client.lPop('queue');
-    const user2Id = await client.lPop('queue');
+    // const user1Id = await client.lPop('queue');
+    // const user2Id = await client.lPop('queue');
+    const user1Id = this.queue.pop();
+    const user2Id = this.queue.pop();
 
     if (!user1Id || !user2Id) return;
 
     const user1 = this.users.find((u) => u.socket.id === user1Id);
     const user2 = this.users.find((u) => u.socket.id === user2Id);
 
-    if (user1 && user2) {
-      this.roomManager.createRoom(user1, user2);
-    }
+    if (!user1 || !user2) return;
+
+    this.roomManager.createRoom(user1, user2);
+    this.clearQueue();
   }
 
   initHandler(socket: Socket) {
