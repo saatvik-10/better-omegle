@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, CameraOff, Mic, MicOff, Radar, RefreshCcw, Signal } from 'lucide-react';
+import {
+  Camera,
+  CameraOff,
+  Mic,
+  MicOff,
+  Radar,
+  RefreshCcw,
+  Signal,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import type {
@@ -31,15 +39,24 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
   const receivingPcRef = useRef<RTCPeerConnection | null>(null);
 
   const [audioOff, setAudioOff] = useState<boolean>(false);
-  const [cameraOff, setCameraOff] = useState<boolean>(false)
+  const [cameraOff, setCameraOff] = useState<boolean>(false);
 
+  const audioTrackRef = useRef<MediaStreamTrack | null>(localAudioTrack);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(localVideoTrack);
+
+  // FIX: actually enable/disable the track — toggling state alone only changed the icon,
+  // track.enabled = false is what silences/blacks out the stream for the peer
   const handleAudio = () => {
-    setAudioOff((mic) => !mic)
+    if (!audioTrackRef.current) return;
+    audioTrackRef.current.enabled = !audioTrackRef.current.enabled;
+    setAudioOff(!audioTrackRef.current.enabled);
   };
 
   const handleCamera = () => {
-    setCameraOff((vid) => !vid)
-  }
+    if (!videoTrackRef.current) return;
+    videoTrackRef.current.enabled = !videoTrackRef.current.enabled;
+    setCameraOff(!videoTrackRef.current.enabled);
+  };
 
   useEffect(() => {
     if (!name) return;
@@ -136,10 +153,7 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
         pc.addTrack(localAudioTrack);
         pc.addTrack(localVideoTrack);
 
-        await pc.setRemoteDescription({
-          sdp: offerSdp,
-          type: 'offer',
-        });
+        await pc.setRemoteDescription({ sdp: offerSdp, type: 'offer' });
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -161,10 +175,7 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
       setConnected(true);
 
       if (sendingPcRef.current) {
-        void sendingPcRef.current.setRemoteDescription({
-          type: 'answer',
-          sdp,
-        });
+        void sendingPcRef.current.setRemoteDescription({ type: 'answer', sdp });
       }
     });
 
@@ -191,16 +202,13 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
     };
   }, [localAudioTrack, localVideoTrack, name]);
 
+  // FIX: removed cameraOff from this effect — track.enabled now handles mute/unmute,
+  // so this effect only needs to run once when the track is first available
   useEffect(() => {
     if (!localVideoRef.current || !localVideoTrack) return;
-
-    if(!cameraOff) {
-      localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
-      void localVideoRef.current.play();
-    } else {
-      localVideoRef.current = null
-    }
-  }, [localVideoTrack, cameraOff]);
+    localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
+    void localVideoRef.current.play();
+  }, [localVideoTrack]);
 
   return (
     <main className='relative min-h-svh overflow-hidden bg-ink text-foam'>
@@ -210,15 +218,15 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
       <div className='relative z-10 mx-auto flex min-h-svh w-full max-w-7xl flex-col gap-5 px-5 py-5 sm:px-8'>
         <header className='flex flex-wrap items-center justify-between gap-4'>
           <BrandMark />
-          <div className='flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 font-display text-xs font-bold uppercase tracking-[0.18em] text-foam/64'>
+          <div className='flex items-center gap-3 rounded-full border border-white/10 bg-white/6 px-4 py-2 font-display text-xs font-bold uppercase tracking-[0.18em] text-foam/64'>
             <span className='size-2 rounded-full bg-acid shadow-[0_0_20px_rgba(216,255,61,.9)]' />
             {connected ? 'Live room' : lobby ? 'Scanning' : 'Signal open'}
           </div>
         </header>
 
         <section className='grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]'>
-          <TextureCard className='min-h-[560px]'>
-            <div className='relative flex h-full min-h-[560px] items-center justify-center overflow-hidden rounded-[24px] bg-black'>
+          <TextureCard className='min-h-140'>
+            <div className='relative flex h-full min-h-140 items-center justify-center overflow-hidden rounded-3xl bg-black'>
               <video
                 autoPlay
                 playsInline
@@ -246,7 +254,7 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
 
           <aside className='flex flex-col gap-5'>
             <TextureCard>
-              <div className='relative aspect-[4/3] overflow-hidden rounded-[24px] bg-black'>
+              <div className='relative aspect-4/3 overflow-hidden rounded-3xl bg-black'>
                 <video
                   autoPlay
                   muted
@@ -254,7 +262,17 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
                   className='h-full w-full scale-x-[-1] object-cover'
                   ref={localVideoRef}
                 />
-                <div className='absolute inset-x-3 bottom-3 rounded-[16px] bg-ink/72 px-3 py-2 font-display text-xs uppercase tracking-[0.16em] text-foam/62 backdrop-blur-xl'>
+                {cameraOff && (
+                  <div className='absolute inset-0 grid place-items-center bg-ink/90'>
+                    <div className='flex flex-col items-center gap-3'>
+                      <CameraOff className='size-8 text-foam/40' />
+                      <p className='font-display text-xs uppercase tracking-[0.18em] text-foam/40'>
+                        Camera off
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className='absolute inset-x-3 bottom-3 rounded-2xl bg-ink/72 px-3 py-2 font-display text-xs uppercase tracking-[0.16em] text-foam/62 backdrop-blur-xl'>
                   {name}
                 </div>
               </div>
@@ -262,7 +280,7 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
 
             <TextureCard className='p-5'>
               <div className='flex items-center gap-3'>
-                <div className='grid size-11 place-items-center rounded-[16px] bg-cyan/16 text-cyan'>
+                <div className='grid size-11 place-items-center rounded-2xl bg-cyan/16 text-cyan'>
                   <Signal className='size-5' />
                 </div>
                 <div>
@@ -280,14 +298,22 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
                   type='button'
                   onClick={handleCamera}
                 >
-                  {cameraOff ? <CameraOff className='size-5' /> : <Camera className='size-5' />}
+                  {cameraOff ? (
+                    <CameraOff className='size-5' />
+                  ) : (
+                    <Camera className='size-5' />
+                  )}
                 </button>
                 <button
                   className='grid h-14 place-items-center rounded-2xl border border-white/10 bg-white/6 text-foam/72'
                   type='button'
                   onClick={handleAudio}
                 >
-                  {audioOff ? <MicOff className='size-5' /> : <Mic className='size-5' />}
+                  {audioOff ? (
+                    <MicOff className='size-5' />
+                  ) : (
+                    <Mic className='size-5' />
+                  )}
                 </button>
               </div>
             </TextureCard>
