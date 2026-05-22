@@ -44,8 +44,6 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
   const audioTrackRef = useRef<MediaStreamTrack | null>(localAudioTrack);
   const videoTrackRef = useRef<MediaStreamTrack | null>(localVideoTrack);
 
-  // FIX: actually enable/disable the track — toggling state alone only changed the icon,
-  // track.enabled = false is what silences/blacks out the stream for the peer
   const handleAudio = () => {
     if (!audioTrackRef.current) return;
     audioTrackRef.current.enabled = !audioTrackRef.current.enabled;
@@ -202,8 +200,6 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
     };
   }, [localAudioTrack, localVideoTrack, name]);
 
-  // FIX: removed cameraOff from this effect — track.enabled now handles mute/unmute,
-  // so this effect only needs to run once when the track is first available
   useEffect(() => {
     if (!localVideoRef.current || !localVideoTrack) return;
     localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
