@@ -21,7 +21,7 @@ import { TextureButton } from '@/components/ui/texture-button';
 import { TextureCard } from '@/components/ui/texture-card';
 import { TextureOverlay } from '@/components/ui/texture-overlay';
 
-const URL = import.meta.env.SERVER_URL;
+const URL = import.meta.env.VITE_SERVER_URL;
 
 type RoomProps = {
   name: string;

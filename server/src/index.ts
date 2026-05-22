@@ -1,7 +1,5 @@
 import express from 'express';
 import { createServer } from 'node:http';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { Server, Socket } from 'socket.io';
 import { RoomManager } from './managers/RoomManager';
 import { UserManager } from './managers/UserManager';
@@ -19,8 +17,6 @@ const io = new Server(server, {
 
 const roomManager = new RoomManager();
 const userManager = new UserManager(roomManager);
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // await connectRedis();
 // registerRedisShutdown();
@@ -41,6 +37,8 @@ io.on('connection', (socket: Socket) => {
   });
 });
 
-server.listen(8000, () => {
-  console.log('Server running at PORT:8000');
+const port = Number(process.env.PORT ?? 8000);
+
+server.listen(port, () => {
+  console.log(`Server running at PORT:${port}`);
 });
