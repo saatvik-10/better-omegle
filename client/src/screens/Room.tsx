@@ -21,7 +21,7 @@ import { TextureButton } from '@/components/ui/texture-button';
 import { TextureCard } from '@/components/ui/texture-card';
 import { TextureOverlay } from '@/components/ui/texture-overlay';
 
-const URL = 'https://better-omegle-nndm.onrender.com';
+const URL = import.meta.env.SERVER_URL;
 
 type RoomProps = {
   name: string;
