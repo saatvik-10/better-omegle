@@ -26,7 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // registerRedisShutdown();
 
 app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'index.html'));
+  res.status(200).send('ok');
 });
 
 io.on('connection', (socket: Socket) => {
