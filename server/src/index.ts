@@ -6,7 +6,7 @@ import { Server, Socket } from 'socket.io';
 import { RoomManager } from './managers/RoomManager';
 import { UserManager } from './managers/UserManager';
 import type { JoinPayload } from '../../shared/socketPayloads';
-import { connectRedis, registerRedisShutdown } from './config/redis';
+// import { connectRedis, registerRedisShutdown } from './config/redis';
 
 const app = express();
 
@@ -22,8 +22,8 @@ const userManager = new UserManager(roomManager);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-await connectRedis();
-registerRedisShutdown();
+// await connectRedis();
+// registerRedisShutdown();
 
 app.get('/', (req, res) => {
   res.sendFile(join(__dirname, 'index.html'));
@@ -32,8 +32,8 @@ app.get('/', (req, res) => {
 io.on('connection', (socket: Socket) => {
   console.log('a user connected');
 
-  socket.on('join', async ({ name }: JoinPayload) => {
-    await userManager.addUser(name, socket);
+  socket.on('join', ({ name }: JoinPayload) => {
+    userManager.addUser(name, socket);
   });
 
   socket.on('disconnect', () => {
