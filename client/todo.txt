@@ -1,0 +1,10 @@
+add chatting
+show if muted
+name not coming in phone
+remote user video resolution
+on big screen 2 screen focus
+when connection dead back to lobby coz rn its stuck
+on home add functionality to mute vid and audio
+when new match, back to lobby and not home
+add share screen maybe?
+add support of multiple ppl maybe?
