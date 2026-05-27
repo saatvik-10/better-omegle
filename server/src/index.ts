@@ -32,6 +32,10 @@ io.on('connection', (socket: Socket) => {
     userManager.addUser(name, socket);
   });
 
+  socket.on('requeue', () => {
+    userManager.reQueueUser(socket);
+  });
+
   socket.on('disconnect', () => {
     userManager.removeUser(socket.id);
   });
