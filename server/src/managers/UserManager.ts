@@ -38,6 +38,21 @@ export class UserManager {
     this.clearQueue();
   }
 
+  reQueueUser(socket: Socket) {
+    const user = this.users.find((u) => u.socket.id === socket.id);
+
+    if (user) {
+      this.queue = this.queue.filter((id) => id !== socket.id);
+
+      // await client.rPush('queue', socket.id);
+      this.queue.push(socket.id);
+
+      socket.emit('lobby');
+
+      this.clearQueue();
+    }
+  }
+
   removeUser(socketId: string) {
     this.users = this.users.filter((u) => u.socket.id !== socketId);
     // await client.lRem('queue', 0, socketId);
