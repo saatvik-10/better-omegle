@@ -49,7 +49,7 @@ export function VideoPreview({
           </div>
         ) : null}
         {audioOff ? (
-          <div className='absolute right-4 top-4 flex items-center gap-2 rounded-full border border-white/10 bg-ink/70 px-3 py-2 text-foam/60 backdrop-blur-xl'>
+          <div className='absolute right-4 top-4 flex items-center gap-2 rounded-full border border-white/10 bg-ink/70 px-3 py-2 text-red-500 backdrop-blur-xl'>
             <MicOff className='size-4' />
             <span className='text-[0.6rem] font-bold uppercase tracking-[0.2em]'>
               Muted
