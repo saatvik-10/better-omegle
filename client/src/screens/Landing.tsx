@@ -12,15 +12,41 @@ const Landing = () => {
   const [name, setName] = useState('');
   const [joined, setJoined] = useState(false);
   const [cameraError, setCameraError] = useState('');
-  const [localVideoTrack, setLocalVideoTrack] = useState<MediaStreamTrack | null>(null);
-  const [localAudioTrack, setLocalAudioTrack] = useState<MediaStreamTrack | null>(null);
+  const [audioOff, setAudioOff] = useState<boolean>(false);
+  const [cameraOff, setCameraOff] = useState<boolean>(false);
+  const [localVideoTrack, setLocalVideoTrack] =
+    useState<MediaStreamTrack | null>(null);
+  const [localAudioTrack, setLocalAudioTrack] =
+    useState<MediaStreamTrack | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioTrackRef = useRef<MediaStreamTrack | null>(localAudioTrack);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(localVideoTrack);
 
   const displayName = name.trim() || 'night-guest';
 
   const handleRoomTransfer = () => {
     setJoined(true);
   };
+
+  const handleAudio = () => {
+    if (!audioTrackRef.current) return;
+    audioTrackRef.current.enabled = !audioTrackRef.current.enabled;
+    setAudioOff(!audioTrackRef.current.enabled);
+  };
+
+  const handleCamera = () => {
+    if (!videoTrackRef.current) return;
+    videoTrackRef.current.enabled = !videoTrackRef.current.enabled;
+    setCameraOff(!videoTrackRef.current.enabled);
+  };
+
+  useEffect(() => {
+    audioTrackRef.current = localAudioTrack;
+  }, [localAudioTrack]);
+
+  useEffect(() => {
+    videoTrackRef.current = localVideoTrack;
+  }, [localVideoTrack]);
 
   useEffect(() => {
     let active = true;
@@ -69,42 +95,47 @@ const Landing = () => {
   }
 
   return (
-    <main className="relative min-h-svh overflow-hidden bg-ink text-foam">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(216,255,61,.22),transparent_28%),radial-gradient(circle_at_85%_18%,rgba(101,243,255,.16),transparent_24%),linear-gradient(135deg,#09090b_0%,#151411_46%,#050507_100%)]" />
-      <TextureOverlay texture="grid" opacity={0.18} />
-      <div className="absolute -left-24 top-28 h-72 w-72 rotate-12 border border-acid/20" />
-      <div className="absolute -right-20 bottom-10 h-80 w-80 rounded-full border border-cyan/20" />
+    <main className='relative min-h-svh overflow-hidden bg-ink text-foam'>
+      <div className='absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(216,255,61,.22),transparent_28%),radial-gradient(circle_at_85%_18%,rgba(101,243,255,.16),transparent_24%),linear-gradient(135deg,#09090b_0%,#151411_46%,#050507_100%)]' />
+      <TextureOverlay texture='grid' opacity={0.18} />
+      <div className='absolute -left-24 top-28 h-72 w-72 rotate-12 border border-acid/20' />
+      <div className='absolute -right-20 bottom-10 h-80 w-80 rounded-full border border-cyan/20' />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col px-5 py-5 sm:px-8 lg:min-h-svh">
-        <header className="flex items-center justify-between">
+      <div className='relative z-10 mx-auto flex w-full max-w-7xl flex-col px-5 py-5 sm:px-8 lg:min-h-svh'>
+        <header className='flex items-center justify-between'>
           <BrandMark />
         </header>
 
-        <section className="grid flex-1 items-center gap-10 py-14 lg:grid-cols-[1.1fr_0.9fr] lg:py-8">
+        <section className='grid flex-1 items-center gap-10 py-14 lg:grid-cols-[1.1fr_0.9fr] lg:py-8'>
           <div>
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.75, ease: [0.2, 0.8, 0.2, 1] }}
-              className="max-w-3xl"
+              className='max-w-3xl'
             >
-              <p className="font-display text-xs font-bold uppercase tracking-[0.34em] text-acid">
+              <p className='font-display text-xs font-bold uppercase tracking-[0.34em] text-acid'>
                 Stranger video chat, re-skinned for the brave
               </p>
-              <h1 className="mt-5 text-pretty font-serif text-[clamp(3.6rem,8vw,7.5rem)] italic leading-[0.84] text-foam">
+              <h1 className='mt-5 text-pretty font-serif text-[clamp(3.6rem,8vw,7.5rem)] italic leading-[0.84] text-foam'>
                 Meet the internet after midnight.
               </h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-foam/64">
-                A sharper, moodier take on random conversation: camera-first, fast to enter,
-                and styled like a pirate radio booth instead of a signup funnel.
+              <p className='mt-7 max-w-2xl text-lg leading-8 text-foam/64'>
+                A sharper, moodier take on random conversation: camera-first,
+                fast to enter, and styled like a pirate radio booth instead of a
+                signup funnel.
               </p>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.75, ease: [0.2, 0.8, 0.2, 1] }}
-              className="mt-9 max-w-2xl"
+              transition={{
+                delay: 0.2,
+                duration: 0.75,
+                ease: [0.2, 0.8, 0.2, 1],
+              }}
+              className='mt-9 max-w-2xl'
             >
               <JoinPanel
                 name={name}
@@ -119,31 +150,36 @@ const Landing = () => {
             initial={{ opacity: 0, x: 22 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
-            className="relative"
+            className='relative'
           >
             <VideoPreview
               videoRef={videoRef}
               cameraReady={Boolean(localVideoTrack)}
               cameraError={cameraError}
+              cameraOff={cameraOff}
+              audioOff={audioOff}
+              onCameraToggle={handleCamera}
+              onAudioToggle={handleAudio}
             />
           </motion.div>
         </section>
 
-        <section id="signals" className="grid gap-4 pb-2 md:grid-cols-3">
-          <SignalCard label="camera" value="Preview" delay={0.45}>
-            Check your frame before you enter, with mic and camera status kept close.
+        <section id='signals' className='grid gap-4 pb-2 md:grid-cols-3'>
+          <SignalCard label='camera' value='Preview' delay={0.45}>
+            Check your frame before you enter, with mic and camera status kept
+            close.
           </SignalCard>
-          <SignalCard label="match" value="One-Click" delay={0.55}>
+          <SignalCard label='match' value='One-Click' delay={0.55}>
             Drop into stranger roulette quickly without a pile of setup screens.
           </SignalCard>
-          <SignalCard label="account" value="None" delay={0.65}>
+          <SignalCard label='account' value='None' delay={0.65}>
             No account wall, no profile ceremony, just a name and the room.
           </SignalCard>
         </section>
 
         <FeatureRail />
 
-        <footer className="pb-8 pt-2 text-center font-display text-xs font-bold uppercase tracking-[0.2em] text-foam/36">
+        <footer className='pb-8 pt-2 text-center font-display text-xs font-bold uppercase tracking-[0.2em] text-foam/36'>
           &copy; Better Omegle · talk first {'>'} vanish later
         </footer>
       </div>
