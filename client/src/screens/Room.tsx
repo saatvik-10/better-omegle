@@ -258,6 +258,14 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
                   className='h-full w-full scale-x-[-1] object-cover'
                   ref={localVideoRef}
                 />
+                {audioOff && (
+                  <div className='absolute right-3 top-3 flex items-center gap-2 rounded-full border border-white/10 bg-ink/70 px-3 py-2 text-foam/60 backdrop-blur-xl'>
+                    <MicOff className='size-4' />
+                    <span className='text-[0.6rem] font-bold uppercase tracking-[0.2em]'>
+                      Muted
+                    </span>
+                  </div>
+                )}
                 {cameraOff && (
                   <div className='absolute inset-0 grid place-items-center bg-ink/90'>
                     <div className='flex flex-col items-center gap-3'>
