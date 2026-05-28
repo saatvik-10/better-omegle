@@ -29,3 +29,9 @@ export interface IceCandidatePayload {
   candidate: any;
   type: 'sender' | 'receiver';
 }
+
+export interface ChatMsg {
+  text: string;
+  senderId: string,
+  time: string,
+}
