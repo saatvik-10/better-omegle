@@ -30,8 +30,11 @@ export interface IceCandidatePayload {
   type: 'sender' | 'receiver';
 }
 
-export interface ChatMsg {
-  text: string;
-  senderId: string,
-  time: string,
+export interface ChatMsgPayload {
+  senderSocketId: string;
+  payload: {
+    text: string;
+    senderId: string;
+    time: string;
+  };
 }
