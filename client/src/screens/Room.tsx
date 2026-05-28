@@ -199,6 +199,21 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
       }
     });
 
+    socketInstance.on('peer-left', () => {
+      setLobby(true);
+      setConnected(false);
+
+      sendingPcRef.current?.close();
+      receivingPcRef.current?.close();
+
+      sendingPcRef.current = null;
+      receivingPcRef.current = null;
+
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+    });
+
     socketInstance.on('lobby', () => {
       setLobby(true);
       setConnected(false);
