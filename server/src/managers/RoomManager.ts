@@ -5,6 +5,7 @@ import type {
   AnswerPayload,
   IceCandidatePayload,
 } from '../../../shared/socketPayloads';
+import type { Socket } from 'socket.io';
 
 interface Room {
   user1: User;
@@ -13,9 +14,11 @@ interface Room {
 
 export class RoomManager {
   private rooms: Map<string, Room>;
+  private socketToRoom: Map<string, string>;
 
   constructor() {
     this.rooms = new Map<string, Room>();
+    this.socketToRoom = new Map<string, string>();
   }
 
   createRoom(user1: User, user2: User) {
@@ -26,6 +29,9 @@ export class RoomManager {
       user2,
     });
 
+    this.socketToRoom.set(user1.socket.id, roomId.toString());
+    this.socketToRoom.set(user2.socket.id, roomId.toString());
+
     user1?.socket.emit('new-room', {
       type: 'send-connection-req',
       roomId,
@@ -34,6 +40,21 @@ export class RoomManager {
       type: 'wait-for-connection-req',
       roomId,
     });
+  }
+
+  removeRoom(socketId: string) {
+    const roomId = this.socketToRoom.get(socketId);
+
+    if (!roomId) return;
+
+    const room = this.rooms.get(roomId);
+
+    if (room) {
+      this.socketToRoom.delete(room.user1.socket.id);
+      this.socketToRoom.delete(room.user2.socket.id);
+    }
+
+    this.rooms.delete(roomId);
   }
 
   onConnReqOffer({ roomId, sdp, senderSocketId }: OfferPayload) {
