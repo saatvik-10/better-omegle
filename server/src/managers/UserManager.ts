@@ -103,7 +103,7 @@ export class UserManager {
       },
     );
 
-    socket.on('message', ({ senderSocketId, payload }: ChatMsgPayload) => {
+    socket.on('chat-message', ({ senderSocketId, payload }: ChatMsgPayload) => {
       this.roomManager.chatMsg({ senderSocketId: socket.id, payload });
     });
   }
