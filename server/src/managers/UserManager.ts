@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io';
 import type { RoomManager } from './RoomManager';
 import type {
   AnswerPayload,
+  ChatMsgPayload,
   IceCandidatePayload,
   OfferPayload,
 } from '../../../shared/socketPayloads';
@@ -101,5 +102,9 @@ export class UserManager {
         });
       },
     );
+
+    socket.on('message', ({ senderSocketId, payload }: ChatMsgPayload) => {
+      this.roomManager.chatMsg({ senderSocketId: socket.id, payload });
+    });
   }
 }
