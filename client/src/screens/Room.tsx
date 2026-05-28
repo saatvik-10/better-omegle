@@ -20,6 +20,7 @@ import { BrandMark } from '@/components/landing/brand-mark';
 import { TextureButton } from '@/components/ui/texture-button';
 import { TextureCard } from '@/components/ui/texture-card';
 import { TextureOverlay } from '@/components/ui/texture-overlay';
+import type { Socket } from 'socket.io-client';
 
 const URL = import.meta.env.VITE_SERVER_URL;
 
@@ -44,6 +45,8 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
   const audioTrackRef = useRef<MediaStreamTrack | null>(localAudioTrack);
   const videoTrackRef = useRef<MediaStreamTrack | null>(localVideoTrack);
 
+  const socketRef = useRef<Socket | null>(null);
+
   const handleAudio = () => {
     if (!audioTrackRef.current) return;
     audioTrackRef.current.enabled = !audioTrackRef.current.enabled;
@@ -56,10 +59,29 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
     setCameraOff(!videoTrackRef.current.enabled);
   };
 
+  const handleNewMatch = () => {
+    sendingPcRef.current?.close();
+    receivingPcRef.current?.close();
+
+    sendingPcRef.current = null;
+    receivingPcRef.current = null;
+
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    setConnected(false);
+    setLobby(true);
+
+    socketRef.current?.emit('requeue');
+  };
+
   useEffect(() => {
     if (!name) return;
 
     const socketInstance = io(URL);
+
+    socketRef.current = socketInstance;
 
     socketInstance.on('connect', () => {
       socketInstance.emit('join', { name });
@@ -326,7 +348,7 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
               className='w-full gap-3'
               size='lg'
               variant='accent'
-              onClick={() => window.location.reload()}
+              onClick={handleNewMatch}
             >
               <RefreshCcw className='relative z-10 size-4' />
               <span className='relative z-10'>New Match</span>
