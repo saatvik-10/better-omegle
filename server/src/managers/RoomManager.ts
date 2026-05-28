@@ -4,6 +4,7 @@ import type {
   OfferPayload,
   AnswerPayload,
   IceCandidatePayload,
+  ChatMsgPayload,
 } from '../../../shared/socketPayloads';
 
 interface Room {
@@ -89,6 +90,21 @@ export class RoomManager {
       sdp,
       roomId,
     });
+  }
+
+  chatMsg({ senderSocketId, payload }: ChatMsgPayload) {
+    const roomId = this.socketToRoom.get(senderSocketId);
+
+    if (!roomId) return;
+
+    const room = this.rooms.get(roomId);
+
+    if (room) {
+      const receivingUser =
+        room.user1.socket.id === senderSocketId ? room.user2 : room.user1;
+
+      receivingUser.socket.emit('message', payload);
+    }
   }
 
   onIceCandidate({
