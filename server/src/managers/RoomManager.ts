@@ -5,7 +5,6 @@ import type {
   AnswerPayload,
   IceCandidatePayload,
 } from '../../../shared/socketPayloads';
-import type { Socket } from 'socket.io';
 
 interface Room {
   user1: User;
@@ -42,7 +41,7 @@ export class RoomManager {
     });
   }
 
-  removeRoom(socketId: string) {
+  removeRoomAndNotify(socketId: string) {
     const roomId = this.socketToRoom.get(socketId);
 
     if (!roomId) return;
@@ -50,11 +49,18 @@ export class RoomManager {
     const room = this.rooms.get(roomId);
 
     if (room) {
+      const receivingUser =
+        room.user1.socket.id === socketId ? room.user2 : room.user1;
+
+      receivingUser?.socket.emit('peer-left', {
+        roomId,
+      });
+
       this.socketToRoom.delete(room.user1.socket.id);
       this.socketToRoom.delete(room.user2.socket.id);
-    }
 
-    this.rooms.delete(roomId);
+      this.rooms.delete(roomId);
+    }
   }
 
   onConnReqOffer({ roomId, sdp, senderSocketId }: OfferPayload) {

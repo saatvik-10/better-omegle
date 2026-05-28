@@ -33,12 +33,12 @@ io.on('connection', (socket: Socket) => {
   });
 
   socket.on('requeue', () => {
-    roomManager.removeRoom(socket.id);
+    roomManager.removeRoomAndNotify(socket.id);
     userManager.reQueueUser(socket);
   });
 
   socket.on('disconnect', () => {
-    roomManager.removeRoom(socket.id);
+    roomManager.removeRoomAndNotify(socket.id);
     userManager.removeUser(socket.id);
   });
 });
