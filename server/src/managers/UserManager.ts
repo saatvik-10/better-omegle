@@ -6,6 +6,7 @@ import type {
   ChatMsgPayload,
   IceCandidatePayload,
   OfferPayload,
+  MediaStatePayload,
 } from '../../../shared/socketPayloads';
 
 export interface User {
@@ -105,6 +106,10 @@ export class UserManager {
 
     socket.on('chat-message', ({ senderSocketId, payload }: ChatMsgPayload) => {
       this.roomManager.chatMsg({ senderSocketId: socket.id, payload });
+    });
+
+    socket.on('media-state', (payload: MediaStatePayload) => {
+      this.roomManager.mediaState(socket.id, payload);
     });
   }
 }
