@@ -34,7 +34,6 @@ export interface ChatMsgPayload {
   senderSocketId: string;
   payload: {
     text: string;
-    senderId: string;
     time: string;
   };
 }
