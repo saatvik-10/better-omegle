@@ -5,6 +5,7 @@ import type {
   AnswerPayload,
   IceCandidatePayload,
   ChatMsgPayload,
+  MediaStatePayload,
 } from '../../../shared/socketPayloads';
 
 interface Room {
@@ -105,6 +106,21 @@ export class RoomManager {
 
       receivingUser.socket.emit('message', payload);
     }
+  }
+
+  mediaState(senderSocketId: string, payload: MediaStatePayload) {
+    const roomId = this.socketToRoom.get(senderSocketId);
+
+    if (!roomId) return;
+
+    const room = this.rooms.get(roomId);
+
+    if (!room) return;
+
+    const receivingUser =
+      room.user1.socket.id === senderSocketId ? room.user2 : room.user1;
+
+    receivingUser.socket.emit('peer-media-state', payload);
   }
 
   onIceCandidate({
