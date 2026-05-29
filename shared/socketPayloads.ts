@@ -37,3 +37,8 @@ export interface ChatMsgPayload {
     time: string;
   };
 }
+
+export interface MediaStatePayload {
+  audioOff: boolean;
+  cameraOff: boolean;
+}
