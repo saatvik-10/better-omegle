@@ -12,11 +12,14 @@ import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import type {
   AnswerPayload,
+  ChatMsgPayload,
   IceCandidatePayload,
+  MediaStatePayload,
   NewRoomPayload,
   OfferPayload,
 } from '../../../shared/socketPayloads';
 import { BrandMark } from '@/components/landing/brand-mark';
+import { ChatPanel } from '@/components/room/chat-panel';
 import { TextureButton } from '@/components/ui/texture-button';
 import { TextureCard } from '@/components/ui/texture-card';
 import { TextureOverlay } from '@/components/ui/texture-overlay';
@@ -28,6 +31,12 @@ type RoomProps = {
   name: string;
   localAudioTrack: MediaStreamTrack | null;
   localVideoTrack: MediaStreamTrack | null;
+};
+
+type ChatItem = {
+  text: string;
+  time: string;
+  from: 'me' | 'peer';
 };
 
 const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
@@ -42,21 +51,75 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
   const [audioOff, setAudioOff] = useState<boolean>(false);
   const [cameraOff, setCameraOff] = useState<boolean>(false);
 
+  const [peerAudioOff, setPeerAudioOff] = useState<boolean>(false);
+  const [peerCameraOff, setPeerCameraOff] = useState<boolean>(false);
+
   const audioTrackRef = useRef<MediaStreamTrack | null>(localAudioTrack);
   const videoTrackRef = useRef<MediaStreamTrack | null>(localVideoTrack);
 
   const socketRef = useRef<Socket | null>(null);
 
+  const [msg, setMsg] = useState('');
+  const [messages, setMessages] = useState<ChatItem[]>([]);
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const getCurrentMediaState = (): MediaStatePayload => {
+    const currentAudioOff = !(audioTrackRef.current?.enabled ?? true);
+    const currentCameraOff = !(videoTrackRef.current?.enabled ?? true);
+
+    return { audioOff: currentAudioOff, cameraOff: currentCameraOff };
+  };
+
   const handleAudio = () => {
     if (!audioTrackRef.current) return;
     audioTrackRef.current.enabled = !audioTrackRef.current.enabled;
-    setAudioOff(!audioTrackRef.current.enabled);
+
+    const nextAudioOff = !audioTrackRef.current.enabled;
+    setAudioOff(nextAudioOff);
+
+    if (connected) {
+      socketRef.current?.emit('media-state', {
+        audioOff: nextAudioOff,
+        cameraOff,
+      } satisfies MediaStatePayload);
+    }
   };
 
   const handleCamera = () => {
     if (!videoTrackRef.current) return;
     videoTrackRef.current.enabled = !videoTrackRef.current.enabled;
-    setCameraOff(!videoTrackRef.current.enabled);
+
+    const nextCameraOff = !videoTrackRef.current.enabled;
+    setCameraOff(nextCameraOff);
+
+    if (connected) {
+      socketRef.current?.emit('media-state', {
+        audioOff,
+        cameraOff: nextCameraOff,
+      } satisfies MediaStatePayload);
+    }
+  };
+
+  const handleChat = () => {
+    const text = msg.trim();
+
+    if (!text) return;
+    if (!socketRef.current?.id) return;
+    if (!connected) return;
+
+    const payload = {
+      text,
+      time: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, { ...payload, from: 'me' }]);
+    socketRef.current.emit('chat-message', {
+      senderSocketId: socketRef.current.id,
+      payload,
+    });
+
+    setMsg('');
   };
 
   const handleNewMatch = () => {
@@ -72,6 +135,9 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
 
     setConnected(false);
     setLobby(true);
+    setMessages([]);
+    setPeerAudioOff(false);
+    setPeerCameraOff(false);
 
     socketRef.current?.emit('requeue');
   };
@@ -91,6 +157,11 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
       toast.success('You have entered a new room');
       setLobby(false);
       setConnected(true);
+      setMessages([]);
+      setPeerAudioOff(false);
+      setPeerCameraOff(false);
+
+      socketInstance.emit('media-state', getCurrentMediaState());
 
       if (type !== 'send-connection-req') return;
       if (!localAudioTrack || !localVideoTrack) return;
@@ -202,6 +273,9 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
     socketInstance.on('peer-left', () => {
       setLobby(true);
       setConnected(false);
+      setMessages([]);
+      setPeerAudioOff(false);
+      setPeerCameraOff(false);
 
       sendingPcRef.current?.close();
       receivingPcRef.current?.close();
@@ -214,9 +288,21 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
       }
     });
 
+    socketInstance.on('peer-media-state', (payload: MediaStatePayload) => {
+      setPeerAudioOff(payload.audioOff);
+      setPeerCameraOff(payload.cameraOff);
+    });
+
+    socketInstance.on('message', (payload: ChatMsgPayload['payload']) => {
+      setMessages((msg) => [...msg, { ...payload, from: 'peer' }]);
+    });
+
     socketInstance.on('lobby', () => {
       setLobby(true);
       setConnected(false);
+      setMessages([]);
+      setPeerAudioOff(false);
+      setPeerCameraOff(false);
     });
 
     socketInstance.on(
@@ -266,6 +352,24 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
                 className='h-full w-full scale-x-[-1] object-cover'
                 ref={remoteVideoRef}
               />
+              {connected && peerAudioOff && (
+                <div className='absolute right-3 top-3 z-10 flex items-center gap-2 rounded-full border border-white/10 bg-ink/70 px-3 py-2 text-red-500 backdrop-blur-xl'>
+                  <MicOff className='size-4' />
+                  <span className='text-[0.6rem] font-bold uppercase tracking-[0.2em]'>
+                    Muted
+                  </span>
+                </div>
+              )}
+              {connected && peerCameraOff && (
+                <div className='absolute inset-0 z-10 grid place-items-center bg-ink/90'>
+                  <div className='flex flex-col items-center gap-3'>
+                    <CameraOff className='size-8 text-foam/40' />
+                    <p className='font-display text-xs uppercase tracking-[0.18em] text-foam/40'>
+                      Camera off
+                    </p>
+                  </div>
+                </div>
+              )}
               {!connected ? (
                 <div className='absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_50%_42%,rgba(101,243,255,.16),transparent_34%),rgba(7,8,11,.92)] text-center'>
                   <div>
@@ -368,6 +472,15 @@ const Room = ({ name, localAudioTrack, localVideoTrack }: RoomProps) => {
               <RefreshCcw className='relative z-10 size-4' />
               <span className='relative z-10'>New Match</span>
             </TextureButton>
+
+            <ChatPanel
+              connected={connected}
+              msg={msg}
+              onMsgChange={setMsg}
+              onSend={handleChat}
+              messages={messages}
+              inputRef={inputRef}
+            />
           </aside>
         </section>
       </div>
